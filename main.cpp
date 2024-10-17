@@ -9,6 +9,7 @@ class ring_buffer
 {
 public:
     ring_buffer(size_t capacity) : storage(capacity + 1),
+                                   capacity(storage.size()),
                                    tail(0),
                                    head(0)
     {
@@ -17,15 +18,15 @@ public:
     bool push(T value)
     {
         size_t curr_tail = tail.load(std::memory_order_relaxed);
-        size_t next_tail = get_next(curr_tail);
+        size_t next_tail = (curr_tail + 1) % capacity;
 
-        if (next_tail == head.load(std::memory_order_acquire)) // проверка на переполнение
+        if (next_tail == head.load(std::memory_order_relaxed))
         {
             return false;
         }
 
         storage[curr_tail] = std::move(value);
-        tail.store(next_tail, std::memory_order_release);
+        tail.store(next_tail, std::memory_order_relaxed);
 
         return true;
     }
@@ -34,25 +35,20 @@ public:
     {
         size_t curr_head = head.load(std::memory_order_relaxed);
 
-        if (curr_head == tail.load(std::memory_order_acquire)) // проверка на пустоту
+        if (curr_head == tail.load(std::memory_order_relaxed))
         {
             return false;
         }
 
         value = std::move(storage[curr_head]);
-        head.store(get_next(curr_head), std::memory_order_release); // обновление после чтения
+        head.store((curr_head + 1) % capacity);
 
         return true;
     }
 
 private:
-    inline size_t get_next(size_t slot) const
-    {
-        return (++slot) % storage.size();
-    }
-
-private:
     std::vector<T> storage;
+    size_t capacity;
     std::atomic<size_t> tail;
     std::atomic<size_t> head;
 };
@@ -61,7 +57,7 @@ int test()
 {
     int count = 10000000;
 
-    ring_buffer<int> buffer(3);
+    ring_buffer<int> buffer(1024);
 
     auto start = std::chrono::steady_clock::now();
 

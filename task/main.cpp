@@ -58,7 +58,7 @@ private:
     std::atomic<size_t> head;
 };
 
-void test()
+int test()
 {
     int count = 10000000;
 
@@ -100,14 +100,19 @@ void test()
 
     std::cout << "time: " << ms << "ms ";
     std::cout << "sum: " << sum << std::endl;
+    return ms;
 }
 
 int main()
 {
-    while (true)
+    int count = 15;
+    int sum = 0;
+    for (int i = 0; i < count; ++i)
     {
-        test();
+        sum += test();
     }
+
+    std::cout << sum / count << std::endl;
 
     return 0;
 };
