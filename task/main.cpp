@@ -16,31 +16,32 @@ public:
 
     bool push(T value)
     {
-        size_t curr_tail = tail.load(std::memory_order_relaxed);
-        size_t next_tail = get_next(curr_tail);
+        size_t curr_tail = tail.load();
+        size_t curr_head = head.load();
 
-        if (next_tail == head.load(std::memory_order_acquire)) // проверка на переполнение
+        if (get_next(curr_tail) == curr_head)
         {
             return false;
         }
 
         storage[curr_tail] = std::move(value);
-        tail.store(next_tail, std::memory_order_release);
+        tail.store(get_next(curr_tail));
 
         return true;
     }
 
     bool pop(T &value)
     {
-        size_t curr_head = head.load(std::memory_order_relaxed);
+        size_t curr_head = head.load();
+        size_t curr_tail = tail.load();
 
-        if (curr_head == tail.load(std::memory_order_acquire)) // проверка на пустоту
+        if (curr_head == curr_tail)
         {
             return false;
         }
 
         value = std::move(storage[curr_head]);
-        head.store(get_next(curr_head), std::memory_order_release); // обновление после чтения
+        head.store(get_next(curr_head));
 
         return true;
     }
@@ -61,7 +62,7 @@ void test()
 {
     int count = 10000000;
 
-    ring_buffer<int> buffer(3);
+    ring_buffer<int> buffer(1024);
 
     auto start = std::chrono::steady_clock::now();
 
@@ -103,7 +104,7 @@ void test()
 
 int main()
 {
-    for (int i = 0; i < 5; ++i)
+    while (true)
     {
         test();
     }
