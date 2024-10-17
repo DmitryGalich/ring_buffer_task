@@ -46,9 +46,9 @@ public:
     }
 
 private:
-    size_t get_next(size_t slot) const
+    inline size_t get_next(size_t slot) const
     {
-        return (slot + 1) % storage.size();
+        return (++slot) % storage.size();
     }
 
 private:
@@ -57,7 +57,7 @@ private:
     std::atomic<size_t> head;
 };
 
-void test()
+int test()
 {
     int count = 10000000;
 
@@ -95,18 +95,24 @@ void test()
     consumer.join();
 
     auto finish = std::chrono::steady_clock::now();
-    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
+    int ms = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
 
     std::cout << "time: " << ms << "ms ";
     std::cout << "sum: " << sum << std::endl;
+
+    return ms;
 }
 
 int main()
 {
-    for (int i = 0; i < 5; ++i)
+    int count = 15;
+    int sum = 0;
+    for (int i = 0; i < count; ++i)
     {
-        test();
+        sum += test();
     }
+
+    std::cout << sum / count << std::endl;
 
     return 0;
 };
