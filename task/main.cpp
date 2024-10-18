@@ -105,7 +105,7 @@ int test()
 
 int main()
 {
-    int count = 15;
+    int count = 3;
     int sum = 0;
     for (int i = 0; i < count; ++i)
     {
