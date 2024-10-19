@@ -24,8 +24,9 @@ public:
     {
         size_t curr_tail = tail.value.load(std::memory_order_relaxed);
         size_t next_tail = (curr_tail + 1) % capacityForPush;
+        size_t curr_head = head.value.load(std::memory_order_acquire);
 
-        if (next_tail == head.value.load(std::memory_order_acquire))
+        if (next_tail == curr_head)
             return false;
 
         storage[curr_tail] = std::move(value);
@@ -37,11 +38,13 @@ public:
     bool pop(T &value)
     {
         size_t curr_head = head.value.load(std::memory_order_relaxed);
+        size_t curr_tail = tail.value.load(std::memory_order_acquire);
 
-        if (curr_head == tail.value.load(std::memory_order_acquire))
+        if (curr_head == curr_tail)
             return false;
 
         value = std::move(storage[curr_head]);
+
         head.value.store((curr_head + 1) % capacityForPop, std::memory_order_release);
 
         return true;
