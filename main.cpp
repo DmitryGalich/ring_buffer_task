@@ -4,13 +4,17 @@
 #include <thread>
 #include <chrono>
 
+struct alignas(64) PaddedAtomic
+{
+    std::atomic<size_t> value{0};
+    char padding[64 - sizeof(std::atomic<size_t>)]; // Кэш-линия на большинстве архитектур 64 байта
+};
+
 template <typename T>
 class ring_buffer
 {
 public:
-    ring_buffer(size_t capacity) : tail(0),
-                                   storage(capacity + 1),
-                                   head(0)
+    ring_buffer(size_t capacity) : storage(capacity + 1), tail{}, head{}
     {
         capacityForPush = storage.size();
         capacityForPop = storage.size();
@@ -18,40 +22,39 @@ public:
 
     bool push(T value)
     {
-        size_t curr_tail = tail.load(std::memory_order_relaxed); // tail
+        size_t curr_tail = tail.value.load(std::memory_order_relaxed);
         size_t next_tail = (curr_tail + 1) % capacityForPush;
 
-        if (next_tail == head.load(std::memory_order_acquire)) // head
+        if (next_tail == head.value.load(std::memory_order_acquire))
             return false;
 
-        storage[curr_tail] = std::move(value);            // storage
-        tail.store(next_tail, std::memory_order_release); // tail
+        storage[curr_tail] = std::move(value);
+        tail.value.store(next_tail, std::memory_order_release);
 
         return true;
     }
 
     bool pop(T &value)
     {
-        size_t curr_head = head.load(std::memory_order_relaxed); // head
+        size_t curr_head = head.value.load(std::memory_order_relaxed);
 
-        if (curr_head == tail.load(std::memory_order_acquire)) // tail
+        if (curr_head == tail.value.load(std::memory_order_acquire))
             return false;
 
-        value = std::move(storage[curr_head]); // storage
-
-        head.store((curr_head + 1) % capacityForPop, std::memory_order_release); // head
+        value = std::move(storage[curr_head]);
+        head.value.store((curr_head + 1) % capacityForPop, std::memory_order_release);
 
         return true;
     }
 
 private:
     size_t capacityForPop{0};
-    std::atomic<size_t> tail;
+    PaddedAtomic tail;
 
     std::vector<T> storage;
 
     size_t capacityForPush{0};
-    std::atomic<size_t> head;
+    PaddedAtomic head;
 };
 
 int test()
