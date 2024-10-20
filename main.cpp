@@ -5,27 +5,27 @@
 #include <chrono>
 
 template <typename T>
-class ring_buffer
+class RingBuffer
 {
     struct alignas(64) PaddedAtomic
     {
-        std::atomic<size_t> value{0};
+        std::atomic<size_t> value_{0};
 
         // Has its own capacity to avoid false cache sharing capacity variable
         // between push() and pop()
-        size_t capacity{0};
+        size_t capacity_{0};
 
     private:
         // Has its own capacity to avoid false cache sharing head and tail
         // between push() and pop()
-        char padding[64 - sizeof(std::atomic<size_t>)]; // size of cache of common CPUs
+        char padding_[64 - sizeof(std::atomic<size_t>)]; // size of cache of common CPUs
     };
 
 public:
-    ring_buffer(size_t capacity) : storage(capacity + 1)
+    RingBuffer(size_t capacity) : storage_(capacity + 1)
     {
-        head.capacity = storage.size();
-        tail.capacity = storage.size();
+        head_.capacity_ = storage_.size();
+        tail_.capacity_ = storage_.size();
     }
 
     bool push(T value)
@@ -34,28 +34,28 @@ public:
 
         // Setting order memory_order_acquire cause head variable in pop() can be modified.
         // So we MUST use memory_order_acquire and NOT memory_order_relaxed
-        size_t curr_head = head.value.load(std::memory_order_acquire);
+        size_t curr_head = head_.value_.load(std::memory_order_acquire);
         // -----------------------------
 
         // TAIL in cache ---------------
 
         // Setting order memory_order_relaxed cause tail variable only in push() can be modified.
         // No need to use here memory_order_acquire
-        size_t curr_tail = tail.value.load(std::memory_order_relaxed);
-        size_t next_tail = (curr_tail + 1) % tail.capacity;
+        size_t curr_tail = tail_.value_.load(std::memory_order_relaxed);
+        size_t next_tail = (curr_tail + 1) % tail_.capacity_;
 
         if (next_tail == curr_head)
             return false;
         // -----------------------------
 
         // STORAGE in cache ------------
-        storage[curr_tail] = std::move(value);
+        storage_[curr_tail] = std::move(value);
         // -----------------------------
 
         // TAIL in cache ---------------
 
         // Setting order memory_order_release cause we are modifing tail variable
-        tail.value.store(next_tail, std::memory_order_release);
+        tail_.value_.store(next_tail, std::memory_order_release);
         // -----------------------------
 
         return true;
@@ -67,45 +67,42 @@ public:
 
         // Setting order memory_order_acquire cause head variable in pop() can be modified.
         // So we MUST use memory_order_acquire and NOT memory_order_relaxed
-        size_t curr_tail = tail.value.load(std::memory_order_acquire);
+        size_t curr_tail = tail_.value_.load(std::memory_order_acquire);
         // -----------------------------
 
         // HEAD in cache ---------------
 
         // Setting order memory_order_relaxed cause head variable only in push() can be modified.
         // No need to use here memory_order_acquire
-        size_t curr_head = head.value.load(std::memory_order_relaxed);
+        size_t curr_head = head_.value_.load(std::memory_order_relaxed);
 
         if (curr_head == curr_tail)
             return false;
+
+        // Setting order memory_order_release cause we are modifing head variable
+        head_.value_.store((curr_head + 1) % head_.capacity_, std::memory_order_release);
         // -----------------------------
 
         // STORAGE in cache ------------
-        value = std::move(storage[curr_head]);
-        // -----------------------------
-
-        // HEAD in cache ---------------
-
-        // Setting order memory_order_release cause we are modifing head variable
-        head.value.store((curr_head + 1) % head.capacity, std::memory_order_release);
+        value = std::move(storage_[curr_head]);
         // -----------------------------
 
         return true;
     }
 
 private:
-    PaddedAtomic tail;
-    PaddedAtomic head;
+    PaddedAtomic tail_;
+    PaddedAtomic head_;
     // There is no need to set storage variable between tail and head variables
     // to avoid false cache sharing cause tail and head has own address shifts
-    std::vector<T> storage;
+    std::vector<T> storage_;
 };
 
 int test()
 {
     int count = 10000000;
 
-    ring_buffer<int> buffer(1024);
+    RingBuffer<int> buffer(1024);
 
     auto start = std::chrono::steady_clock::now();
 
