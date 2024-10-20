@@ -1,22 +1,15 @@
-# Ring buffer task
+# Оптимизиация кольцевого буфера
 
-Requirements:
-
-- Docker
-
-Container tech stack:
-
-- Ubuntu 22.04
-- CMake
-- C++23
-
-Memory leaks checked by Valgrind
-
-Build:
+Сборка и запуск:
 
 ```
-mkdir build
-cd build
-cmake ..
-cmake --build .
+mkdir build && cd build
+g++ -std=c++17 -O2 -pthread ../main.cpp && ./a.out
+```
+
+Сборка и запус с проверкой коректности работы потоков:
+
+```
+mkdir build && cd build
+g++ -std=c++17 -O2 -pthread -fsanitize=thread ../main.cpp && ./a.out
 ```

@@ -4,60 +4,58 @@
 #include <thread>
 #include <chrono>
 
-struct alignas(64) PaddedAtomic
-{
-    std::atomic<size_t> value{0};
-    char padding[64 - sizeof(std::atomic<size_t>)]; // Кэш-линия на большинстве архитектур 64 байта
-};
-
 template <typename T>
 class ring_buffer
 {
 public:
-    ring_buffer(size_t capacity) : storage(capacity + 1), tail{}, head{}
+    ring_buffer(size_t capacity) : storage(capacity + 1),
+                                   tail(0),
+                                   head(0)
     {
-        capacityForPush = storage.size();
-        capacityForPop = storage.size();
     }
 
     bool push(T value)
     {
-        size_t curr_tail = tail.value.load(std::memory_order_relaxed);
-        size_t next_tail = (curr_tail + 1) % capacityForPush;
-        size_t curr_head = head.value.load(std::memory_order_acquire);
+        size_t curr_tail = tail.load();
+        size_t curr_head = head.load();
 
-        if (next_tail == curr_head)
+        if (get_next(curr_tail) == curr_head)
+        {
             return false;
+        }
 
         storage[curr_tail] = std::move(value);
-        tail.value.store(next_tail, std::memory_order_release);
+        tail.store(get_next(curr_tail));
 
         return true;
     }
 
     bool pop(T &value)
     {
-        size_t curr_head = head.value.load(std::memory_order_relaxed);
-        size_t curr_tail = tail.value.load(std::memory_order_acquire);
+        size_t curr_head = head.load();
+        size_t curr_tail = tail.load();
 
         if (curr_head == curr_tail)
+        {
             return false;
+        }
 
         value = std::move(storage[curr_head]);
-
-        head.value.store((curr_head + 1) % capacityForPop, std::memory_order_release);
+        head.store(get_next(curr_head));
 
         return true;
     }
 
 private:
-    size_t capacityForPop{0};
-    PaddedAtomic tail;
+    size_t get_next(size_t slot) const
+    {
+        return (slot + 1) % storage.size();
+    }
 
+private:
     std::vector<T> storage;
-
-    size_t capacityForPush{0};
-    PaddedAtomic head;
+    std::atomic<size_t> tail;
+    std::atomic<size_t> head;
 };
 
 int test()
@@ -98,11 +96,10 @@ int test()
     consumer.join();
 
     auto finish = std::chrono::steady_clock::now();
-    int ms = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
+    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(finish - start).count();
 
     std::cout << "time: " << ms << "ms ";
     std::cout << "sum: " << sum << std::endl;
-
     return ms;
 }
 
