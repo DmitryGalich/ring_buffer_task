@@ -4,20 +4,27 @@
 #include <thread>
 #include <chrono>
 
+struct alignas(64) PaddedAtomic
+{
+    std::atomic<size_t> value{0};
+
+private:
+    // Cache size of most common CPUs
+    char padding[64 - sizeof(std::atomic<size_t>)];
+};
+
 template <typename T>
 class ring_buffer
 {
 public:
-    ring_buffer(size_t capacity) : storage(capacity + 1),
-                                   tail(0),
-                                   head(0)
+    ring_buffer(size_t capacity) : storage(capacity + 1)
     {
     }
 
     bool push(T value)
     {
-        size_t curr_tail = tail.load();
-        size_t curr_head = head.load();
+        size_t curr_tail = tail.value.load();
+        size_t curr_head = head.value.load();
 
         if (get_next(curr_tail) == curr_head)
         {
@@ -25,15 +32,15 @@ public:
         }
 
         storage[curr_tail] = std::move(value);
-        tail.store(get_next(curr_tail));
+        tail.value.store(get_next(curr_tail));
 
         return true;
     }
 
     bool pop(T &value)
     {
-        size_t curr_head = head.load();
-        size_t curr_tail = tail.load();
+        size_t curr_head = head.value.load();
+        size_t curr_tail = tail.value.load();
 
         if (curr_head == curr_tail)
         {
@@ -41,7 +48,7 @@ public:
         }
 
         value = std::move(storage[curr_head]);
-        head.store(get_next(curr_head));
+        head.value.store(get_next(curr_head));
 
         return true;
     }
@@ -54,8 +61,9 @@ private:
 
 private:
     std::vector<T> storage;
-    std::atomic<size_t> tail;
-    std::atomic<size_t> head;
+    // Using structs with padding to aviod false sharing cache of CPU
+    PaddedAtomic tail;
+    PaddedAtomic head;
 };
 
 int test()
