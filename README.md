@@ -1,5 +1,9 @@
 # Ring buffer optimisation
 
+### Solution
+
+Using std::memory_order_* modifiers while loading and storing values in atomic variables
+
 ### With threads checking
 
 ```
