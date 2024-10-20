@@ -28,11 +28,14 @@
 
 ### Unsuccesefull Solutions
 
-1. Setting get_next() as inline function
+1. Using compare_exchange_weak()
+    * Boost - 0%
+
+2. Setting get_next() as inline function
     * Branch - [inline](https://github.com/DmitryGalich/ring_buffer_task/tree/inline)
     * Boost - 0%
 
-2. Set memory_order_relaxed for all load() and store() operations with atomic variables.
+3. Set memory_order_relaxed for all load() and store() operations with atomic variables.
     * Branch - [all_relaxed](https://github.com/DmitryGalich/ring_buffer_task/tree/all_relaxed)
     * Boost - 86%
     * **DATA RACE ERROR**
