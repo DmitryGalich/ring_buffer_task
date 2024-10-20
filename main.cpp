@@ -16,8 +16,13 @@ public:
 
     bool push(T value)
     {
-        size_t curr_tail = tail.load();
-        size_t curr_head = head.load();
+        // Setting order memory_order_relaxed cause tail variable only in push() can be modified.
+        // No need to use here memory_order_acquire
+        size_t curr_tail = tail.load(std::memory_order_relaxed);
+
+        // Setting order memory_order_acquire cause head variable in pop() can be modified.
+        // So we MUST use memory_order_acquire and NOT memory_order_relaxed
+        size_t curr_head = head.load(std::memory_order_acquire);
 
         if (get_next(curr_tail) == curr_head)
         {
@@ -25,15 +30,22 @@ public:
         }
 
         storage[curr_tail] = std::move(value);
-        tail.store(get_next(curr_tail));
+
+        // Setting order memory_order_release cause we modify tail variable
+        tail.store(get_next(curr_tail), std::memory_order_release);
 
         return true;
     }
 
     bool pop(T &value)
     {
-        size_t curr_head = head.load();
-        size_t curr_tail = tail.load();
+        // Setting order memory_order_relaxed cause head variable only in push() can be modified.
+        // No need to use here memory_order_acquire
+        size_t curr_head = head.load(std::memory_order_relaxed);
+
+        // Setting order memory_order_acquire cause tail variable in pop() can be modified.
+        // So we MUST use memory_order_acquire and NOT memory_order_relaxed
+        size_t curr_tail = tail.load(std::memory_order_acquire);
 
         if (curr_head == curr_tail)
         {
@@ -41,7 +53,9 @@ public:
         }
 
         value = std::move(storage[curr_head]);
-        head.store(get_next(curr_head));
+
+        // Setting order memory_order_release cause we modify head variable
+        head.store(get_next(curr_head), std::memory_order_release);
 
         return true;
     }
@@ -116,6 +130,3 @@ int main()
 
     return 0;
 };
-
-// g++ -std=c++17 -O2 -pthread main.cpp
-// g++ -std=c++17 -O2 -pthread -fsanitize=thread main.cpp

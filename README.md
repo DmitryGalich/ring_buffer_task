@@ -10,10 +10,10 @@ g++ -std=c++17 -O2 -pthread -fsanitize=thread ../main.cpp && ./a.out
 Average time:
 
 ```
-time: 5633ms sum: 49999995000000
-time: 5640ms sum: 49999995000000
-time: 5731ms sum: 49999995000000
-5668
+time: 3469ms sum: 49999995000000
+time: 3426ms sum: 49999995000000
+time: 3492ms sum: 49999995000000
+3462
 ```
 
 ### Without threads checking
@@ -26,8 +26,8 @@ g++ -std=c++17 -O2 -pthread ../main.cpp && ./a.out
 Average time:
 
 ```
-time: 573ms sum: 49999995000000
-time: 534ms sum: 49999995000000
-time: 555ms sum: 49999995000000
-554
+time: 441ms sum: 49999995000000
+time: 425ms sum: 49999995000000
+time: 376ms sum: 49999995000000
+414
 ```
