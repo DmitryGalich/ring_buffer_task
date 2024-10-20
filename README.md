@@ -1,15 +1,13 @@
-# Оптимизиация кольцевого буфера
+# Ring buffer optimisation
 
-## Ветка изначального задания
-
-### С проверкой коректности работы потоков
-
-Сборка и запус с проверкой коректности работы потоков:
+### With threads checking
 
 ```
 mkdir build && cd build
 g++ -std=c++17 -O2 -pthread -fsanitize=thread ../main.cpp && ./a.out
 ```
+
+Average time:
 
 ```
 time: 5633ms sum: 49999995000000
@@ -18,16 +16,14 @@ time: 5731ms sum: 49999995000000
 5668
 ```
 
-### Без проверки коректности работы потоков
-
-Сборка и запуск:
+### Without threads checking
 
 ```
 mkdir build && cd build
 g++ -std=c++17 -O2 -pthread ../main.cpp && ./a.out
 ```
 
-Среднее время выполнения:
+Average time:
 
 ```
 time: 573ms sum: 49999995000000
