@@ -95,8 +95,10 @@ public:
 
 private:
     PaddedAtomic tail;
-    std::vector<T> storage;
     PaddedAtomic head;
+    // There is no need to set storage variable between tail and head variables
+    // to avoid false cache sharing cause tail and head has own address shifts
+    std::vector<T> storage;
 };
 
 int test()
