@@ -12,20 +12,24 @@ public:
                                    tail(0),
                                    head(0)
     {
+        // Save same value to two variables
+        capacity_for_pop.store(storage.size());
+        capacity_for_push.store(storage.size());
     }
 
     bool push(T value)
     {
         size_t curr_tail = tail.load();
+        size_t next_tail = ((curr_tail + 1) % capacity_for_push.load(std::memory_order_relaxed));
         size_t curr_head = head.load();
 
-        if (get_next(curr_tail) == curr_head)
+        if (next_tail == curr_head)
         {
             return false;
         }
 
         storage[curr_tail] = std::move(value);
-        tail.store(get_next(curr_tail));
+        tail.store(next_tail);
 
         return true;
     }
@@ -41,20 +45,16 @@ public:
         }
 
         value = std::move(storage[curr_head]);
-        head.store(get_next(curr_head));
+        head.store(((curr_head + 1) % capacity_for_pop.load(std::memory_order_relaxed)));
 
         return true;
     }
 
 private:
-    size_t get_next(size_t slot) const
-    {
-        return (slot + 1) % storage.size();
-    }
-
-private:
     std::vector<T> storage;
+    std::atomic<size_t> capacity_for_pop;
     std::atomic<size_t> tail;
+    std::atomic<size_t> capacity_for_push;
     std::atomic<size_t> head;
 };
 
