@@ -7,6 +7,7 @@
 struct alignas(64) PaddedAtomic
 {
     std::atomic<size_t> value{0};
+    size_t capacity{0};
 
 private:
     char padding[64 - sizeof(std::atomic<size_t>)];
@@ -18,58 +19,38 @@ class ring_buffer
 public:
     ring_buffer(size_t capacity) : storage(capacity + 1)
     {
+        head.capacity = storage.size();
+        tail.capacity = storage.size();
     }
 
     bool push(T value)
     {
-        // Setting order memory_order_relaxed cause tail variable only in push() can be modified.
-        // No need to use here memory_order_acquire
-        size_t curr_tail = tail.value.load(std::memory_order_relaxed);
-
-        // Setting order memory_order_acquire cause head variable in pop() can be modified.
-        // So we MUST use memory_order_acquire and NOT memory_order_relaxed
         size_t curr_head = head.value.load(std::memory_order_acquire);
 
-        if (get_next(curr_tail) == curr_head)
-        {
+        size_t curr_tail = tail.value.load(std::memory_order_relaxed);
+        size_t next_tail = (curr_tail + 1) % tail.capacity;
+
+        if (next_tail == curr_head)
             return false;
-        }
 
         storage[curr_tail] = std::move(value);
-
-        // Setting order memory_order_release cause we modify tail variable
-        tail.value.store(get_next(curr_tail), std::memory_order_release);
+        tail.value.store(next_tail, std::memory_order_release);
 
         return true;
     }
 
     bool pop(T &value)
     {
-        // Setting order memory_order_relaxed cause head variable only in push() can be modified.
-        // No need to use here memory_order_acquire
+        size_t curr_tail = tail.value.load(std::memory_order_acquire);
         size_t curr_head = head.value.load(std::memory_order_relaxed);
 
-        // Setting order memory_order_acquire cause tail variable in pop() can be modified.
-        // So we MUST use memory_order_acquire and NOT memory_order_relaxed
-        size_t curr_tail = tail.value.load(std::memory_order_acquire);
-
         if (curr_head == curr_tail)
-        {
             return false;
-        }
 
         value = std::move(storage[curr_head]);
-
-        // Setting order memory_order_release cause we modify head variable
-        head.value.store(get_next(curr_head), std::memory_order_release);
+        head.value.store((curr_head + 1) % head.capacity, std::memory_order_release);
 
         return true;
-    }
-
-private:
-    size_t get_next(size_t slot) const
-    {
-        return (slot + 1) % storage.size();
     }
 
 private:
