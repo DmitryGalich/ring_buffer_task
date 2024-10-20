@@ -22,7 +22,7 @@ public:
 
         // Setting order memory_order_acquire cause head variable in pop() can be modified.
         // So we MUST use memory_order_acquire and NOT memory_order_relaxed
-        size_t curr_head = head.load(std::memory_order_acquire);
+        size_t curr_head = head.load(std::memory_order_relaxed);
 
         if (get_next(curr_tail) == curr_head)
         {
@@ -32,7 +32,7 @@ public:
         storage[curr_tail] = std::move(value);
 
         // Setting order memory_order_release cause we modify tail variable
-        tail.store(get_next(curr_tail), std::memory_order_release);
+        tail.store(get_next(curr_tail), std::memory_order_relaxed);
 
         return true;
     }
@@ -45,7 +45,7 @@ public:
 
         // Setting order memory_order_acquire cause tail variable in pop() can be modified.
         // So we MUST use memory_order_acquire and NOT memory_order_relaxed
-        size_t curr_tail = tail.load(std::memory_order_acquire);
+        size_t curr_tail = tail.load(std::memory_order_relaxed);
 
         if (curr_head == curr_tail)
         {
@@ -55,7 +55,7 @@ public:
         value = std::move(storage[curr_head]);
 
         // Setting order memory_order_release cause we modify head variable
-        head.store(get_next(curr_head), std::memory_order_release);
+        head.store(get_next(curr_head), std::memory_order_relaxed);
 
         return true;
     }
