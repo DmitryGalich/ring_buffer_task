@@ -16,8 +16,7 @@ class RingBuffer
         size_t capacity_{0};
 
     private:
-        // Has its own capacity to avoid false cache sharing head and tail
-        // between push() and pop()
+        // Shift for cache filling
         char padding_[64 - sizeof(std::atomic<size_t>)]; // size of cache of common CPUs
     };
 
