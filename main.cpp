@@ -8,8 +8,8 @@ template <typename T>
 class ring_buffer
 {
 public:
-    ring_buffer(size_t capacity) : storage(capacity + 1),
-                                   tail(0),
+    ring_buffer(size_t capacity) : tail(0),
+                                   storage(capacity + 1), // Move between to avoid initialization warning
                                    head(0)
     {
     }
@@ -53,8 +53,11 @@ private:
     }
 
 private:
-    std::vector<T> storage;
     std::atomic<size_t> tail;
+    // Moving storage between variables helping to aviod false sharing cache
+    // of CPU between push() and pop() functions from separate threads when working
+    // with tail and head variables
+    std::vector<T> storage;
     std::atomic<size_t> head;
 };
 
