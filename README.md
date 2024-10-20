@@ -1,4 +1,4 @@
-# Ring buffer optimisation
+# Ring buffer optimization
 
 ### Solution
 
