@@ -47,7 +47,8 @@ public:
     }
 
 private:
-    size_t get_next(size_t slot) const
+    // Set inline modificator
+    inline size_t get_next(size_t slot) const
     {
         return (slot + 1) % storage.size();
     }

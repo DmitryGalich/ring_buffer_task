@@ -1,5 +1,9 @@
 # Ring buffer optimization
 
+### Solution - NOT EFFETIVE. GAVE SAME BENCHMARKS
+
+inline modificator for get_next() function
+
 ### With threads checking
 
 ```
