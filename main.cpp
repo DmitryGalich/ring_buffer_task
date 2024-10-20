@@ -4,9 +4,11 @@
 #include <thread>
 #include <chrono>
 
-struct alignas(64) PaddedAtomic
+struct alignas(64) PaddedAtomic // 550 -> 450
 {
     std::atomic<size_t> value{0};
+
+private:
     char padding[64 - sizeof(std::atomic<size_t>)]; // Кэш-линия на большинстве архитектур 64 байта
 };
 
@@ -14,7 +16,9 @@ template <typename T>
 class ring_buffer
 {
 public:
-    ring_buffer(size_t capacity) : storage(capacity + 1), tail{}, head{}
+    ring_buffer(size_t capacity) : storage(capacity + 1),
+                                   tail{},
+                                   head{}
     {
         capacityForPush = storage.size();
         capacityForPop = storage.size();
@@ -22,42 +26,63 @@ public:
 
     bool push(T value)
     {
-        size_t curr_tail = tail.value.load(std::memory_order_relaxed);
+        // size_t curr_tail = tail.load();
+        // size_t curr_head = head.load();
+
+        size_t curr_head = head.value.load(); // переставить местами = 470 - 420
+        size_t curr_tail = tail.value.load();
         size_t next_tail = (curr_tail + 1) % capacityForPush;
-        size_t curr_head = head.value.load(std::memory_order_acquire);
 
         if (next_tail == curr_head)
+        {
             return false;
+        }
 
         storage[curr_tail] = std::move(value);
-        tail.value.store(next_tail, std::memory_order_release);
+
+        // tail.store(get_next(curr_tail));
+        tail.value.store(next_tail);
 
         return true;
     }
 
     bool pop(T &value)
     {
-        size_t curr_head = head.value.load(std::memory_order_relaxed);
-        size_t curr_tail = tail.value.load(std::memory_order_acquire);
+        // size_t curr_head = head.load();
+        // size_t curr_tail = tail.load();
+
+        size_t curr_tail = tail.value.load(); // переставить местами = 470 - 420
+        size_t curr_head = head.value.load();
 
         if (curr_head == curr_tail)
+        {
             return false;
+        }
 
         value = std::move(storage[curr_head]);
 
-        head.value.store((curr_head + 1) % capacityForPop, std::memory_order_release);
+        // head.store(get_next(curr_head));
+        head.value.store((curr_head + 1) % capacityForPop);
 
         return true;
     }
 
 private:
+    size_t get_next(size_t slot) const // inline не дал результатов
+    {
+        return (slot + 1) % storage.size();
+    }
+
+private:
     size_t capacityForPop{0};
     PaddedAtomic tail;
-
     std::vector<T> storage;
-
     size_t capacityForPush{0};
     PaddedAtomic head;
+
+    // std::atomic<size_t> tail;
+    // std::vector<T> storage; // Между переменными = 550 -> 450
+    // std::atomic<size_t> head;
 };
 
 int test()
