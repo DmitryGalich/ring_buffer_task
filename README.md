@@ -13,7 +13,7 @@
     * Average time - 414 ms (Before optimization - 550 ms)
     * Boost - 25%
 
-2. Using compare_exchange_*() function.
+2. Using compare_exchange_*() functions.
     * Branch - [compare_exchange_operations](https://github.com/DmitryGalich/ring_buffer_task/tree/compare_exchange_operations)
     * Boost - 18%
 
