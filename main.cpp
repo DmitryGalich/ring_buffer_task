@@ -26,8 +26,8 @@ public:
 
     bool push(T value)
     {
-        size_t curr_head = head_.value_.load(std::memory_order_acquire);
         size_t curr_tail = tail_.value_.load(std::memory_order_relaxed);
+        size_t curr_head = head_.value_.load(std::memory_order_acquire);
         size_t next_tail = (curr_tail + 1) % tail_.capacity_;
 
         if (next_tail == curr_head)
@@ -46,8 +46,8 @@ public:
 
     bool pop(T &value)
     {
-        size_t curr_tail = tail_.value_.load(std::memory_order_acquire);
         size_t curr_head = head_.value_.load(std::memory_order_relaxed);
+        size_t curr_tail = tail_.value_.load(std::memory_order_acquire);
 
         if (curr_head == curr_tail)
             return false;
