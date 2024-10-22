@@ -11,13 +11,10 @@ class RingBuffer
     {
         std::atomic<size_t> value_{0};
 
-        // Has its own capacity to avoid false cache sharing capacity variable
-        // between push() and pop()
         size_t capacity_{0};
 
     private:
-        // Shift for cache filling
-        char padding_[64 - sizeof(std::atomic<size_t>)]; // size of cache of common CPUs
+        char padding_[64 - sizeof(std::atomic<size_t>)];
     };
 
 public:
@@ -29,62 +26,41 @@ public:
 
     bool push(T value)
     {
-        // HEAD in cache ---------------
-
-        // Setting order memory_order_acquire cause head variable in pop() can be modified.
-        // So we MUST use memory_order_acquire and NOT memory_order_relaxed
         size_t curr_head = head_.value_.load(std::memory_order_acquire);
-        // -----------------------------
-
-        // TAIL in cache ---------------
-
-        // Setting order memory_order_relaxed cause tail variable only in push() can be modified.
-        // No need to use here memory_order_acquire
         size_t curr_tail = tail_.value_.load(std::memory_order_relaxed);
         size_t next_tail = (curr_tail + 1) % tail_.capacity_;
 
         if (next_tail == curr_head)
             return false;
-        // -----------------------------
 
-        // STORAGE in cache ------------
         storage_[curr_tail] = std::move(value);
-        // -----------------------------
 
-        // TAIL in cache ---------------
-
-        // Setting order memory_order_release cause we are modifing tail variable
-        tail_.value_.store(next_tail, std::memory_order_release);
-        // -----------------------------
+        size_t expected_tail = curr_tail;
+        while (!tail_.value_.compare_exchange_weak(expected_tail, next_tail, std::memory_order_release, std::memory_order_relaxed))
+        {
+            expected_tail = curr_tail;
+        }
 
         return true;
     }
 
     bool pop(T &value)
     {
-        // TAIL in cache ---------------
-
-        // Setting order memory_order_acquire cause head variable in pop() can be modified.
-        // So we MUST use memory_order_acquire and NOT memory_order_relaxed
         size_t curr_tail = tail_.value_.load(std::memory_order_acquire);
-        // -----------------------------
-
-        // HEAD in cache ---------------
-
-        // Setting order memory_order_relaxed cause head variable only in push() can be modified.
-        // No need to use here memory_order_acquire
         size_t curr_head = head_.value_.load(std::memory_order_relaxed);
 
         if (curr_head == curr_tail)
             return false;
 
-        // Setting order memory_order_release cause we are modifing head variable
-        head_.value_.store((curr_head + 1) % head_.capacity_, std::memory_order_release);
-        // -----------------------------
-
-        // STORAGE in cache ------------
         value = std::move(storage_[curr_head]);
-        // -----------------------------
+
+        size_t next_head = (curr_head + 1) % head_.capacity_;
+
+        size_t expected_head = curr_head;
+        while (!head_.value_.compare_exchange_strong(expected_head, next_head, std::memory_order_release, std::memory_order_relaxed))
+        {
+            expected_head = curr_head;
+        }
 
         return true;
     }
@@ -92,8 +68,6 @@ public:
 private:
     PaddedAtomic tail_;
     PaddedAtomic head_;
-    // There is no need to set storage variable between tail and head variables
-    // to avoid false cache sharing cause tail and head has own address shifts
     std::vector<T> storage_;
 };
 
