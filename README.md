@@ -2,7 +2,7 @@
 
 ### Result
 
-* Average time - 125 ms (Before optimization - 550 ms)
+* Average time - 121 ms (Before optimization - 550 ms)
 * Boost - 88%
 * No data races
 
@@ -67,8 +67,8 @@ g++ -std=c++17 -O2 -pthread ../main.cpp && ./a.out
 Average time:
 
 ```
-time: 151ms sum: 49999995000000
-time: 113ms sum: 49999995000000
-time: 113ms sum: 49999995000000
-125
+time: 141ms sum: 49999995000000
+time: 111ms sum: 49999995000000
+time: 112ms sum: 49999995000000
+121
 ```

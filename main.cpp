@@ -14,7 +14,7 @@ class RingBuffer
         size_t capacity_{0};
 
     private:
-        char padding_[64 - sizeof(std::atomic<size_t>)];
+        char padding_[64 - sizeof(size_t) - sizeof(std::atomic<size_t>)];
     };
 
 public:
